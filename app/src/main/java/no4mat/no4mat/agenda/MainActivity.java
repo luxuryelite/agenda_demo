@@ -5,6 +5,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.ContentValues;
+import android.content.DialogInterface;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Menu;
@@ -37,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     };
 
     ArrayList<AgendaEntry> listAgenda = new ArrayList<>();
+    SQLiteDatabase db;
 
     Spinner category;
     EditText etDate, etTime, etName, etLastName, etPhone;
@@ -59,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         status_menu = true;
+
+        LocalDatabase lcdb = new LocalDatabase(this);
+        db = lcdb.getWritableDatabase();
 
         etDate = (EditText) findViewById(R.id.editTextDate);
         etTime = (EditText) findViewById(R.id.editTextTime);
@@ -91,12 +99,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String message = position + " " + id;
-                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+                showDeleteMessage(listAgenda.get(position).id);
             }
         });
 
         //temp();
+        readDatabase();
         updateList();
 
     }
@@ -180,6 +189,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 agendaEntry.phoneNumber = etPhone.getText().toString();
 
                 listAgenda.add(agendaEntry);
+                insertDatabase(agendaEntry);
                 agendaEntry = new AgendaEntry();
                 updateList();
                 Toast.makeText(this, "Guardado", Toast.LENGTH_SHORT).show();
@@ -211,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             status_menu = true;
         }
         this.invalidateOptionsMenu();
+        readDatabase();
     }
 
     private void updateEditTextDateTime () {
@@ -222,5 +233,65 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         etName.setText(null);
         etLastName.setText(null);
         etPhone.setText(null);
+    }
+
+    /* Métodos para almacenar en la base de datos*/
+
+    private void insertDatabase (AgendaEntry agendaEntry) {
+        ContentValues cv = new ContentValues();
+        cv.put("name", agendaEntry.name);
+        cv.put("lastName", agendaEntry.lastName);
+        cv.put("phone", agendaEntry.phoneNumber);
+        cv.put("date", agendaEntry.getDateFormat());
+        cv.put("time", agendaEntry.getTimeFormat());
+        cv.put("category", "");
+
+        db.insert("list_agenda", null, cv);
+    }
+
+    private void readDatabase () {
+        if (db!=null) {
+            listAgenda = new ArrayList<AgendaEntry>();
+            Cursor cursor = db.rawQuery("SELECT id, name, lastName, phone, category, date, time FROM list_agenda", null);
+            AgendaEntry tempEntry = new AgendaEntry();
+            if (cursor.moveToFirst()) {
+                do {
+                    tempEntry.id = cursor.getInt(0);
+                    tempEntry.name = cursor.getString(1);
+                    tempEntry.lastName = cursor.getString(2);
+                    tempEntry.phoneNumber = cursor.getString(3);
+                    tempEntry.category = cursor.getString(4);
+                    tempEntry.setDate(cursor.getString(5));
+                    tempEntry.setTime(cursor.getString(6));
+                    listAgenda.add(tempEntry);
+                    tempEntry = new AgendaEntry();
+                } while (cursor.moveToNext());
+                cursor.close();
+            }
+        }
+    }
+
+    /* Metodo para mostrar dialogo de eliminar */
+    private void showDeleteMessage (int id) {
+        DialogInterface.OnClickListener positive = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Toast.makeText(getApplicationContext(), "ELIMINANDO", Toast.LENGTH_SHORT).show();
+                db.delete("list_agenda", "id = " + id, null);
+                readDatabase();
+                updateList();
+            }
+        };
+
+        DialogInterface.OnClickListener negative = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Toast.makeText(getApplicationContext(), "Cancelado", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        AlertDialogDelete adl = new AlertDialogDelete(positive, negative);
+        adl.show(getSupportFragmentManager(), "¿Eliminar?");
+
     }
 }

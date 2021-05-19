@@ -37,4 +37,17 @@ public class AgendaEntry implements Serializable {
     public String getTimeFormat () {
         return hour  + ":" + minute;
     }
+
+    public void setDate (String date) {
+        String[] parts = date.split("/");
+        day = Integer.parseInt(parts[0]);
+        month = Integer.parseInt(parts[1]);
+        year = Integer.parseInt(parts[2]);
+    }
+
+    public void setTime (String time) {
+        String[] parts = time.split(":");
+        hour = Integer.parseInt(parts[0]);
+        minute = Integer.parseInt(parts[1]);
+    }
 }
