@@ -29,6 +29,14 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.List;
+
+import no4mat.no4mat.agenda.api.ApiInterface;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -100,14 +108,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 //Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
-                showDeleteMessage(listAgenda.get(position).id);
+                showDeleteMessage(listAgenda.get(position));
             }
         });
 
         //temp();
         readDatabase();
         updateList();
-
     }
 
     @Override
@@ -132,7 +139,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void temp () {
         for (int i = 0; i < 20; i++) {
             AgendaEntry entry = new AgendaEntry();
-            entry.id = i;
             entry.name = "Nombre " + i;
             listAgenda.add(entry);
         }
@@ -238,6 +244,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /* Métodos para almacenar en la base de datos*/
 
     private void insertDatabase (AgendaEntry agendaEntry) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(ApiInterface.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApiInterface apiInterface = retrofit.create(ApiInterface.class);
+
+        Call<AgendaEntry> call = apiInterface.addEntry(agendaEntry);
+        call.enqueue(new Callback<AgendaEntry>() {
+            @Override
+            public void onResponse(Call<AgendaEntry> call, Response<AgendaEntry> response) {
+                Toast.makeText(getApplicationContext(),"Guardado", Toast.LENGTH_SHORT).show();
+                updateList();
+            }
+
+            @Override
+            public void onFailure(Call<AgendaEntry> call, Throwable t) {
+                Toast.makeText(getApplicationContext(), "Posible error en la conexión", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /*
+    private void insertDatabase (AgendaEntry agendaEntry) {
         ContentValues cv = new ContentValues();
         cv.put("name", agendaEntry.name);
         cv.put("lastName", agendaEntry.lastName);
@@ -247,8 +277,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         cv.put("category", "");
 
         db.insert("list_agenda", null, cv);
+    } */
+
+    private void readDatabase () {
+        listAgenda = new ArrayList<AgendaEntry>();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(ApiInterface.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApiInterface apiInterface = retrofit.create(ApiInterface.class);
+        Call<List<AgendaEntry>> call = apiInterface.getEntries();
+        call.enqueue(new Callback<List<AgendaEntry>>() {
+            @Override
+            public void onResponse(Call<List<AgendaEntry>> call, Response<List<AgendaEntry>> response) {
+                if(!response.isSuccessful()) {
+                    Toast.makeText(getApplicationContext(), "Ocurrio un error", Toast.LENGTH_SHORT).show();
+                } else {
+                    List<AgendaEntry> list = response.body();
+                    for (AgendaEntry entry: list) {
+                        listAgenda.add(entry);
+                    }
+                    updateList();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<AgendaEntry>> call, Throwable t) {
+                Toast.makeText(getApplicationContext(), "Problema de conexion", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
+    /*
     private void readDatabase () {
         if (db!=null) {
             listAgenda = new ArrayList<AgendaEntry>();
@@ -269,10 +330,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 cursor.close();
             }
         }
-    }
+    } */
 
     /* Metodo para mostrar dialogo de eliminar */
-    private void showDeleteMessage (int id) {
+    private void showDeleteMessage (AgendaEntry agendaEntry) {
+        /*
         DialogInterface.OnClickListener positive = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -280,6 +342,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 db.delete("list_agenda", "id = " + id, null);
                 readDatabase();
                 updateList();
+            }
+        };*/
+
+        DialogInterface.OnClickListener positive = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Retrofit retrofit = new Retrofit.Builder()
+                        .baseUrl(ApiInterface.BASE_URL)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
+
+                ApiInterface apiInterface = retrofit.create(ApiInterface.class);
+                Call<AgendaEntry> call = apiInterface.deleteEntry(agendaEntry.id);
+                call.enqueue(new Callback<AgendaEntry>() {
+                    @Override
+                    public void onResponse(Call<AgendaEntry> call, Response<AgendaEntry> response) {
+                        Toast.makeText(getApplicationContext(), "Eliminado", Toast.LENGTH_SHORT).show();
+                        readDatabase();
+                        updateList();
+                    }
+
+                    @Override
+                    public void onFailure(Call<AgendaEntry> call, Throwable t) {
+                        Toast.makeText(getApplicationContext(), "Error en la conexión", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         };
 

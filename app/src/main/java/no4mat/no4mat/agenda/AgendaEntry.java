@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Calendar;
 
 public class AgendaEntry implements Serializable {
-    int id;
+    public int id;
     public String name;
     public String lastName;
     public String category;
@@ -18,7 +18,6 @@ public class AgendaEntry implements Serializable {
 
     public AgendaEntry () {
         Calendar calendar = Calendar.getInstance();
-        id = -1;
         name = "";
         lastName = "";
         category = "";
